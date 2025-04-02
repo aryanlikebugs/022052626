@@ -81,10 +81,65 @@ async function fetchPostsForUsers() {
     return usersPosts; // Ensure to return the result
 }
 
+async function fetchCommentsCountForUsers() {
+    const token = await getAuthToken();
+    if (!token) {
+        console.error("Failed to retrieve authentication token.");
+        return { error: "Authentication failed. No token received." };
+    }
+
+    const headers = { Authorization: `Bearer ${token}` };
+    const baseUrl = "http://20.244.56.144/evaluation-service/posts";
+
+    // Fetch all posts for each user
+    const usersPosts = await fetchPostsForUsers();
+    if (usersPosts.error) {
+        return usersPosts; // Return error if fetching posts failed
+    }
+
+    let userPostComments = [];
+
+    for (const user of usersPosts) {
+        const { userid, postid: postIds } = user;
+
+        let postsWithComments = [];
+
+        for (const postId of postIds) {
+            try {
+                const response = await axios.get(`${baseUrl}/${postId}/comments`, { headers });
+
+                if (response.status === 200 && response.data.comments) {
+                    postsWithComments.push({
+                        postid: postId,
+                        comment_count: response.data.comments.length
+                    });
+                } else {
+                    postsWithComments.push({
+                        postid: postId,
+                        comment_count: 0
+                    });
+                }
+            } catch (error) {
+                console.error(`Error fetching comments for post ${postId}:`, error.message);
+                postsWithComments.push({
+                    postid: postId,
+                    comment_count: 0,
+                    error: "Failed to fetch comments"
+                });
+            }
+        }
+
+        userPostComments.push({ userid, posts: postsWithComments,fetchCommentsCountForUsers });
+    }
+
+    return userPostComments;
+}
+
 
 
 
 
 
 // Export both functions
-module.exports = { getAuthToken, getTopUsers,fetchPostsForUsers };
+// Export functions including fetchCommentsCountForUsers
+module.exports = { getAuthToken, getTopUsers, fetchPostsForUsers, fetchCommentsCountForUsers };
